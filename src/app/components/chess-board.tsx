@@ -303,10 +303,12 @@ export default function ChessBoard() {
   };
 
   return (
-    <div className="flex flex-col items-center">
-      <div className="mb-4 text-lg font-semibold">{gameStatus}</div>
+    <div className="flex flex-col items-center p-4">
+      <div className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
+        {gameStatus}
+      </div>
 
-      <div className="grid grid-cols-8 border border-gray-800 shadow-lg">
+      <div className="grid grid-cols-8 gap-0.5 border border-gray-800 shadow-lg max-w-2xl mx-auto">
         {board.map((row, rowIndex) =>
           row.map((piece, colIndex) => {
             const isSelected =
@@ -321,20 +323,28 @@ export default function ChessBoard() {
               <div
                 key={`${rowIndex}-${colIndex}`}
                 className={`
-                  w-16 h-16 flex items-center justify-center relative
-                  ${isLight ? "bg-amber-200" : "bg-amber-800"} 
-                  ${isSelected ? "ring-4 ring-blue-500 ring-inset" : ""}
-                  ${isPossibleMove ? "ring-4 ring-green-500 ring-inset" : ""}
-                `}
+              w-16 h-16 flex items-center justify-center relative
+              ${
+                isLight
+                  ? "bg-amber-200 dark:bg-amber-800"
+                  : "bg-amber-800 dark:bg-amber-200"
+              } 
+              ${isSelected ? "ring-4 ring-blue-500 ring-inset" : ""}
+              ${isPossibleMove ? "ring-4 ring-green-500 ring-inset" : ""}
+              transition-all duration-200 ease-in-out
+            `}
                 onClick={() => handleSquareClick(rowIndex, colIndex)}
+                aria-label={`Square ${String.fromCharCode(97 + colIndex)}${
+                  8 - rowIndex
+                }`}
               >
                 {colIndex === 0 && (
-                  <span className="absolute left-1 top-1 text-xs font-bold text-gray-700">
+                  <span className="absolute left-1 top-1 text-xs font-bold text-gray-700 dark:text-gray-300">
                     {8 - rowIndex}
                   </span>
                 )}
                 {rowIndex === 7 && (
-                  <span className="absolute right-1 bottom-1 text-xs font-bold text-gray-700">
+                  <span className="absolute right-1 bottom-1 text-xs font-bold text-gray-700 dark:text-gray-300">
                     {String.fromCharCode(97 + colIndex)}
                   </span>
                 )}
@@ -353,24 +363,39 @@ export default function ChessBoard() {
         )}
       </div>
 
+      {/* Move History */}
       <div className="mt-6 w-full max-w-md">
-        <h3 className="text-lg font-semibold mb-2">Move History</h3>
-        <div className="bg-white p-4 rounded shadow max-h-60 overflow-y-auto">
+        <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">
+          Move History
+        </h3>
+        <div className="bg-white dark:bg-gray-800 p-4 rounded shadow max-h-60 overflow-y-auto">
           <table className="w-full">
             <thead>
               <tr>
-                <th className="text-left">#</th>
-                <th className="text-left">White</th>
-                <th className="text-left">Black</th>
+                <th className="text-left text-gray-700 dark:text-gray-300">
+                  #
+                </th>
+                <th className="text-left text-gray-700 dark:text-gray-300">
+                  White
+                </th>
+                <th className="text-left text-gray-700 dark:text-gray-300">
+                  Black
+                </th>
               </tr>
             </thead>
             <tbody>
               {Array.from({ length: Math.ceil(moveHistory.length / 2) }).map(
                 (_, index) => (
                   <tr key={index}>
-                    <td>{index + 1}.</td>
-                    <td>{moveHistory[index * 2]?.notation || ""}</td>
-                    <td>{moveHistory[index * 2 + 1]?.notation || ""}</td>
+                    <td className="text-gray-700 dark:text-gray-300">
+                      {index + 1}.
+                    </td>
+                    <td className="text-gray-700 dark:text-gray-300">
+                      {moveHistory[index * 2]?.notation || ""}
+                    </td>
+                    <td className="text-gray-700 dark:text-gray-300">
+                      {moveHistory[index * 2 + 1]?.notation || ""}
+                    </td>
                   </tr>
                 )
               )}
@@ -379,13 +404,15 @@ export default function ChessBoard() {
         </div>
       </div>
 
+      {/* Reset Button */}
       <button
-        className="mt-6 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+        className="mt-6 px-6 py-3 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
         onClick={resetGame}
       >
         Reset Game
       </button>
 
+      {/* Promotion Modal */}
       {showPromotionModal && (
         <PromotionModal color={currentPlayer} onSelect={handlePromotion} />
       )}
