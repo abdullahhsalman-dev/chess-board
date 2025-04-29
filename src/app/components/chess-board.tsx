@@ -19,7 +19,7 @@ import ChessPieceComponent from "./chess-piece";
 import PromotionModal from "./promotion-modal";
 
 export default function ChessBoard() {
-  const [board, setBoard] = useState<ChessPiece[][]>(initialBoard());
+  const [board, setBoard] = useState<(ChessPiece | null)[][]>(initialBoard());
   const [selectedPiece, setSelectedPiece] = useState<Position | null>(null);
   const [possibleMoves, setPossibleMoves] = useState<Position[]>([]);
   const [currentPlayer, setCurrentPlayer] = useState<Color>("white");
@@ -63,7 +63,6 @@ export default function ChessBoard() {
   }, [board, currentPlayer, gameState]);
 
   const handleSquareClick = (row: number, col: number) => {
-    // If game is over, don't allow more moves
     if (
       isCheckmate(board, currentPlayer, gameState) ||
       isStalemate(board, currentPlayer, gameState)
@@ -71,16 +70,15 @@ export default function ChessBoard() {
       return;
     }
 
-    // If we already have a selected piece
     if (selectedPiece) {
-      // Check if the clicked square is a valid move
       const isValidMove = possibleMoves.some(
         (move) => move.row === row && move.col === col
       );
 
       if (isValidMove) {
-        // Check if this is a pawn promotion move
         const pieceToMove = board[selectedPiece.row][selectedPiece.col];
+        if (!pieceToMove) return;
+
         const isPawnPromotion =
           pieceToMove.type === "pawn" &&
           ((pieceToMove.color === "white" && row === 0) ||
@@ -92,7 +90,6 @@ export default function ChessBoard() {
           return;
         }
 
-        // Execute the move
         const { newBoard, newGameState, capturedPiece } = movePiece(
           board,
           { row: selectedPiece.row, col: selectedPiece.col },
@@ -100,46 +97,40 @@ export default function ChessBoard() {
           gameState
         );
 
-        // Update move history
-        const pieceToRecord = board[selectedPiece.row][selectedPiece.col];
         setMoveHistory([
           ...moveHistory,
           {
-            piece: pieceToRecord,
+            piece: pieceToMove,
             from: { row: selectedPiece.row, col: selectedPiece.col },
             to: { row, col },
             capturedPiece,
             notation: generateNotation(
-              pieceToRecord,
+              pieceToMove,
               { row: selectedPiece.row, col: selectedPiece.col },
               { row, col },
               capturedPiece,
               newBoard,
-              gameState
+              newGameState
             ),
           },
         ]);
 
-        // Update the board and switch players
         setBoard(newBoard);
         setGameState(newGameState);
         setCurrentPlayer(currentPlayer === "white" ? "black" : "white");
         setSelectedPiece(null);
         setPossibleMoves([]);
       } else {
-        // If clicked on another piece of the same color, select that piece instead
         const clickedPiece = board[row][col];
         if (clickedPiece && clickedPiece.color === currentPlayer) {
           setSelectedPiece({ row, col });
           setPossibleMoves(getPossibleMoves(board, { row, col }, gameState));
         } else {
-          // If clicked on an invalid square, deselect
           setSelectedPiece(null);
           setPossibleMoves([]);
         }
       }
     } else {
-      // If no piece is selected yet, select a piece if it's the current player's
       const clickedPiece = board[row][col];
       if (clickedPiece && clickedPiece.color === currentPlayer) {
         setSelectedPiece({ row, col });
@@ -151,7 +142,9 @@ export default function ChessBoard() {
   const handlePromotion = (pieceType: PieceType) => {
     if (!selectedPiece || !promotionPosition) return;
 
-    // Execute the move with promotion
+    const pieceToPromote = board[selectedPiece.row][selectedPiece.col];
+    if (!pieceToPromote) return;
+
     const { newBoard, newGameState, capturedPiece } = movePiece(
       board,
       { row: selectedPiece.row, col: selectedPiece.col },
@@ -160,8 +153,6 @@ export default function ChessBoard() {
       pieceType
     );
 
-    // Update move history with promotion
-    const pieceToPromote = board[selectedPiece.row][selectedPiece.col];
     setMoveHistory([
       ...moveHistory,
       {
@@ -176,13 +167,12 @@ export default function ChessBoard() {
           promotionPosition,
           capturedPiece,
           newBoard,
-          gameState,
+          newGameState,
           pieceType
         ),
       },
     ]);
 
-    // Update the board and switch players
     setBoard(newBoard);
     setGameState(newGameState);
     setCurrentPlayer(currentPlayer === "white" ? "black" : "white");
@@ -216,11 +206,10 @@ export default function ChessBoard() {
     from: Position,
     to: Position,
     capturedPiece: ChessPiece | null,
-    newBoard: ChessPiece[][],
+    newBoard: (ChessPiece | null)[][],
     gameState: GameState,
     promotionPiece?: PieceType
   ): string => {
-    // Handle castling
     if (piece.type === "king" && Math.abs(from.col - to.col) === 2) {
       return to.col > from.col ? "O-O" : "O-O-O";
     }
@@ -230,18 +219,15 @@ export default function ChessBoard() {
 
     let notation = "";
 
-    // Add piece letter (except for pawns)
     if (piece.type !== "pawn") {
       notation +=
         piece.type === "knight" ? "N" : piece.type.charAt(0).toUpperCase();
     }
 
-    // For pawns capturing, add the file
     if (piece.type === "pawn" && capturedPiece) {
       notation += files[from.col];
     }
 
-    // Add disambiguation if needed
     const ambiguousPieces = findAmbiguousPieces(
       board,
       piece,
@@ -259,15 +245,12 @@ export default function ChessBoard() {
       }
     }
 
-    // Add capture symbol
     if (capturedPiece) {
       notation += "x";
     }
 
-    // Add destination square
     notation += files[to.col] + ranks[to.row];
 
-    // Add promotion piece
     if (promotionPiece) {
       notation +=
         "=" +
@@ -276,7 +259,6 @@ export default function ChessBoard() {
           : promotionPiece.charAt(0).toUpperCase());
     }
 
-    // Check for check or checkmate
     const nextPlayer = piece.color === "white" ? "black" : "white";
     if (isCheckmate(newBoard, nextPlayer, gameState)) {
       notation += "#";
@@ -289,7 +271,7 @@ export default function ChessBoard() {
 
   // Find pieces of the same type that could also move to the target square
   const findAmbiguousPieces = (
-    board: ChessPiece[][],
+    board: (ChessPiece | null)[][],
     piece: ChessPiece,
     from: Position,
     to: Position,
@@ -346,7 +328,6 @@ export default function ChessBoard() {
                 `}
                 onClick={() => handleSquareClick(rowIndex, colIndex)}
               >
-                {/* Coordinate labels */}
                 {colIndex === 0 && (
                   <span className="absolute left-1 top-1 text-xs font-bold text-gray-700">
                     {8 - rowIndex}
@@ -358,10 +339,8 @@ export default function ChessBoard() {
                   </span>
                 )}
 
-                {/* Chess piece */}
                 {piece && <ChessPieceComponent piece={piece} />}
 
-                {/* Highlight for possible moves */}
                 {isPossibleMove && !piece && (
                   <div className="w-4 h-4 rounded-full bg-green-500 opacity-60"></div>
                 )}
@@ -374,7 +353,6 @@ export default function ChessBoard() {
         )}
       </div>
 
-      {/* Move history */}
       <div className="mt-6 w-full max-w-md">
         <h3 className="text-lg font-semibold mb-2">Move History</h3>
         <div className="bg-white p-4 rounded shadow max-h-60 overflow-y-auto">
@@ -401,7 +379,6 @@ export default function ChessBoard() {
         </div>
       </div>
 
-      {/* Reset button */}
       <button
         className="mt-6 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
         onClick={resetGame}
@@ -409,7 +386,6 @@ export default function ChessBoard() {
         Reset Game
       </button>
 
-      {/* Promotion modal */}
       {showPromotionModal && (
         <PromotionModal color={currentPlayer} onSelect={handlePromotion} />
       )}
